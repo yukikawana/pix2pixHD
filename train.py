@@ -11,6 +11,7 @@ import os
 import numpy as np
 import torch
 from torch.autograd import Variable
+import torchvision.transforms as transforms
 
 opt = TrainOptions().parse()
 iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
@@ -30,6 +31,7 @@ if opt.debug:
     opt.niter_decay = 0
     opt.max_dataset_size = 10
 
+
 data_loader = CreateDataLoader(opt)
 dataset = data_loader.load_data()
 dataset_size = len(data_loader)
@@ -44,6 +46,9 @@ display_delta = total_steps % opt.display_freq
 print_delta = total_steps % opt.print_freq
 save_delta = total_steps % opt.save_latest_freq
 
+labelupsample=torch.nn.Upsample(size=(150,496),mode='bilinear')
+imageupsample=torch.nn.Upsample(size=(150,496),mode='bilinear')
+
 for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
     epoch_start_time = time.time()
     if epoch != start_epoch:
@@ -57,6 +62,9 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         save_fake = total_steps % opt.display_freq == display_delta
 
         ############## Forward Pass ######################
+        data['label']=labelupsample(data["label"])
+        data['image']=imageupsample(data["image"])
+
         losses, generated = model(Variable(data['label']), Variable(data['inst']), 
             Variable(data['image']), Variable(data['feat']), infer=save_fake)
 
@@ -81,6 +89,13 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         #call(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"]) 
 
+        errors = {k: v.data[0] if not isinstance(v, int) else v for k, v in loss_dict.items()}
+        message=''
+        for k, v in errors.items():
+            if v != 0:
+                message += '%s: %.3f ' % (k, v)
+
+        print("epoch: %d iter: %d "%(epoch, total_steps), message)
         ############## Display results and errors ##########
         ### print out errors
         if total_steps % opt.print_freq == print_delta:

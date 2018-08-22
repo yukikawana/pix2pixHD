@@ -25,7 +25,8 @@ class Pix2PixHDModel(BaseModel):
         self.isTrain = opt.isTrain
         self.use_features = opt.instance_feat or opt.label_feat
         self.gen_features = self.use_features and not self.opt.load_features
-        input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc
+        #input_nc = opt.label_nc if opt.label_nc != 0 else opt.input_nc
+        input_nc = 512
 
         ##### define networks        
         # Generator network
@@ -113,6 +114,7 @@ class Pix2PixHDModel(BaseModel):
     def encode_input(self, label_map, inst_map=None, real_image=None, feat_map=None, infer=False):             
         if self.opt.label_nc == 0:
             input_label = label_map.data.cuda()
+
         else:
             # create one-hot vector for label map 
             size = label_map.size()
@@ -160,6 +162,7 @@ class Pix2PixHDModel(BaseModel):
             input_concat = torch.cat((input_label, feat_map), dim=1)                        
         else:
             input_concat = input_label
+
         fake_image = self.netG.forward(input_concat)
 
         # Fake Detection and Loss
